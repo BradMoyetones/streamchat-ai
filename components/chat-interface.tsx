@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, Plus, Lightbulb, ArrowUp, Menu, PenSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { AnimatedThemeToggler } from './animated-theme-toggler';
 import { ChatMessage } from './chat-message';
 import { useChatStream } from '@/hooks/use-chat-stream';
+import { AnimatePresence, motion } from 'motion/react';
+import { TypewriterPhrases } from './typewriter-phrases';
 
 type ActiveButton = 'none' | 'add' | 'deepSearch' | 'think';
 
@@ -27,6 +29,8 @@ export default function ChatInterface() {
     });
 
     const { messages, isStreaming, sendMessage } = useChatStream({ isDev: IS_DEV });
+
+    const isInitialState = useMemo(() => messages.length === 0, [messages]);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -58,7 +62,7 @@ export default function ChatInterface() {
         if (!isStreaming && !isMobile) {
             focusTextarea();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isStreaming, isMobile]);
 
     const saveSelectionState = () => {
@@ -168,117 +172,157 @@ export default function ChatInterface() {
         }
     };
 
-    return (
-        <div className="dark:bg-background bg-muted">
-            <header className="sticky top-0 shrink-0 h-12 flex items-center px-4 backdrop-blur-2xl z-10">
-                <div className="w-full flex items-center justify-between px-2">
-                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                        <Menu className="h-5 w-5" />
-                        <span className="sr-only">Menu</span>
-                    </Button>
-
-                    <h1 className="text-base font-medium">Chat</h1>
-
-                    <div className="flex items-center">
-                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                            <PenSquare className="h-5 w-5" />
-                            <span className="sr-only">New Chat</span>
-                        </Button>
-                        <AnimatedThemeToggler variant="ghost" size="icon-sm" className="rounded-full" />
-                    </div>
+    const renderInputForm = () => (
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto w-full">
+            <div
+                ref={inputContainerRef}
+                className={cn(
+                    'relative w-full rounded-3xl border bg-card p-3 cursor-text',
+                    isStreaming && 'opacity-80'
+                )}
+                onClick={handleInputContainerClick}
+            >
+                <div className="pb-9">
+                    <Textarea
+                        ref={textareaRef}
+                        placeholder={isStreaming ? 'Waiting for response...' : 'Ask Anything'}
+                        className="min-h-10 max-h-40 w-full rounded-3xl border-0 bg-transparent! placeholder:text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-base pl-2 pr-4 pt-0 pb-0 resize-none overflow-y-auto leading-tight shadow-none"
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        rows={1}
+                    />
                 </div>
-            </header>
 
-            <div className="flex-1 px-4 py-6">
-                <div className="max-w-3xl mx-auto space-y-6">
-                    {messages.map((message) => (
-                        <ChatMessage
-                            key={message.id}
-                            id={message.id}
-                            content={message.content}
-                            type={message.role}
-                            completed={message.completed}
-                            isStreaming={isStreaming && message.role === 'assistant' && !message.completed}
-                        />
-                    ))}
-                </div>
-            </div>
+                <div className="absolute bottom-3 left-3 right-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="rounded-full h-8 w-8 shrink-0 p-0 bg-transparent"
+                                onClick={() => toggleButton('add')}
+                                disabled
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="sr-only">Add</span>
+                            </Button>
 
-            <div className="sticky bottom-0 shrink-0 p-4 backdrop-blur-2xl z-10">
-                <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-                    <div
-                        ref={inputContainerRef}
-                        className={cn(
-                            'relative w-full rounded-3xl border bg-card p-3 cursor-text',
-                            isStreaming && 'opacity-80'
-                        )}
-                        onClick={handleInputContainerClick}
-                    >
-                        <div className="pb-9">
-                            <Textarea
-                                ref={textareaRef}
-                                placeholder={isStreaming ? 'Waiting for response...' : 'Ask Anything'}
-                                className="min-h-10 max-h-40 w-full rounded-3xl border-0 bg-transparent! placeholder:text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-base pl-2 pr-4 pt-0 pb-0 resize-none overflow-y-auto leading-tight shadow-none"
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                rows={1}
-                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="rounded-full h-8 px-3 flex items-center gap-1.5 bg-transparent"
+                                onClick={() => toggleButton('deepSearch')}
+                                disabled
+                            >
+                                <Search className="h-4 w-4" />
+                                <span className="text-sm">DeepSearch</span>
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="rounded-full h-8 px-3 flex items-center gap-1.5 bg-transparent"
+                                onClick={() => toggleButton('think')}
+                                disabled
+                            >
+                                <Lightbulb className="h-4 w-4" />
+                                <span className="text-sm">Think</span>
+                            </Button>
                         </div>
 
-                        <div className="absolute bottom-3 left-3 right-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        className="rounded-full h-8 w-8 shrink-0 p-0 bg-transparent"
-                                        onClick={() => toggleButton('add')}
-                                        disabled
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        <span className="sr-only">Add</span>
-                                    </Button>
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            size="icon"
+                            className={cn('rounded-full h-8 w-8 border-0 shrink-0', hasTyped && 'scale-110')}
+                            disabled={!inputValue.trim() || isStreaming}
+                        >
+                            <ArrowUp className="h-4 w-4" />
+                            <span className="sr-only">Submit</span>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    );
 
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="rounded-full h-8 px-3 flex items-center gap-1.5 bg-transparent"
-                                        onClick={() => toggleButton('deepSearch')}
-                                        disabled
-                                    >
-                                        <Search className="h-4 w-4" />
-                                        <span className="text-sm">DeepSearch</span>
-                                    </Button>
+    return (
+        <div>
+            <AnimatePresence>
+                <motion.header
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
+                    className="sticky top-0 shrink-0 h-12 flex items-center px-4 backdrop-blur-2xl z-10"
+                >
+                    <div className="w-full flex items-center justify-between px-2">
+                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                            <Menu className="h-5 w-5" />
+                            <span className="sr-only">Menu</span>
+                        </Button>
 
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="rounded-full h-8 px-3 flex items-center gap-1.5 bg-transparent"
-                                        onClick={() => toggleButton('think')}
-                                        disabled
-                                    >
-                                        <Lightbulb className="h-4 w-4" />
-                                        <span className="text-sm">Think</span>
-                                    </Button>
-                                </div>
+                        <h1 className="text-base font-medium">Chat</h1>
 
-                                <Button
-                                    type="submit"
-                                    variant="outline"
-                                    size="icon"
-                                    className={cn('rounded-full h-8 w-8 border-0 shrink-0', hasTyped && 'scale-110')}
-                                    disabled={!inputValue.trim() || isStreaming}
-                                >
-                                    <ArrowUp className="h-4 w-4" />
-                                    <span className="sr-only">Submit</span>
-                                </Button>
+                        <div className="flex items-center">
+                            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                                <PenSquare className="h-5 w-5" />
+                                <span className="sr-only">New Chat</span>
+                            </Button>
+                            <AnimatedThemeToggler variant="ghost" size="icon-sm" className="rounded-full" />
+                        </div>
+                    </div>
+                </motion.header>
+            </AnimatePresence>
+            <AnimatePresence>
+                {isInitialState ? (
+                    <div
+                        className="min-h-[calc(100vh-48px)] flex flex-col items-center justify-center px-4 pb-32"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: 0.1 } }}
+                        >
+                            <TypewriterPhrases />
+                        </motion.div>
+                        <motion.div
+                            layoutId="input-form"
+                            initial={{ opacity: 0, y: 20, scale: 0.90 }}
+                            animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: 0.2 } }}
+                            className="w-full max-w-3xl"
+                        >
+                            {renderInputForm()}
+                        </motion.div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex-1 px-4 py-6 min-h-[calc(100vh-48px-134px)]">
+                            <div
+                                className="max-w-3xl mx-auto space-y-6"
+                            >
+                                {messages.map((message) => (
+                                    <ChatMessage
+                                        key={message.id}
+                                        id={message.id}
+                                        content={message.content}
+                                        type={message.role}
+                                        completed={message.completed}
+                                        isStreaming={isStreaming && message.role === 'assistant' && !message.completed}
+                                    />
+                                ))}
                             </div>
                         </div>
-                    </div>
-                </form>
-            </div>
+
+                        <motion.div
+                            className="sticky bottom-0 shrink-0 p-4 backdrop-blur-2xl z-10"
+                            layoutId='input-form'
+                        >
+                            {renderInputForm()}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }

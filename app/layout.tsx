@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className={cn(geistSans.variable, geistMono.variable, onest.variable, 'font-onest antialiased')}>
+            <body className={cn(geistSans.variable, geistMono.variable, onest.variable, 'font-onest antialiased dark:bg-background bg-muted')}>
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     {children}
                 </ThemeProvider>
